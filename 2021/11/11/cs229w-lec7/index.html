@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/blogs/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/blogs/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/blogs/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/blogs/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/blogs/css/main.css">
+
+
+<link rel="stylesheet" href="/blogs/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"zinuocai.github.io","root":"/blogs/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="TL; DR本文是斯坦福大学 CS224W: Machine Learning with Graphs 第七讲的内容。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CS224W-Lecture 7-GNN (2)">
+<meta property="og:url" content="https://zinuocai.github.io/blogs/2021/11/11/cs229w-lec7/index.html">
+<meta property="og:site_name" content="今天不想写代码">
+<meta property="og:description" content="TL; DR本文是斯坦福大学 CS224W: Machine Learning with Graphs 第七讲的内容。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://zinuocai.github.io/blogs/images/image-20211108223219368.png">
+<meta property="og:image" content="https://zinuocai.github.io/blogs/images/image-20211108222913077.png">
+<meta property="og:image" content="https://zinuocai.github.io/blogs/images/image-20211108223614427.png">
+<meta property="og:image" content="https://zinuocai.github.io/blogs/images/image-20211109121418611.png">
+<meta property="og:image" content="https://zinuocai.github.io/blogs/images/image-20211111214023361.png">
+<meta property="og:image" content="https://zinuocai.github.io/blogs/images/image-20211109124636402.png">
+<meta property="og:image" content="https://zinuocai.github.io/blogs/images/image-20211111151057809.png">
+<meta property="og:image" content="https://zinuocai.github.io/blogs/images/image-20211111151523692.png">
+<meta property="og:image" content="https://zinuocai.github.io/blogs/images/image-20211111153656652.png">
+<meta property="og:image" content="https://zinuocai.github.io/blogs/images/image-20211111154046035.png">
+<meta property="og:image" content="https://zinuocai.github.io/blogs/images/image-20211111154850416.png">
+<meta property="article:published_time" content="2021-11-11T15:52:38.000Z">
+<meta property="article:modified_time" content="2021-11-12T00:10:06.792Z">
+<meta property="article:author" content="Zinuo Cai">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://zinuocai.github.io/blogs/images/image-20211108223219368.png">
+
+<link rel="canonical" href="https://zinuocai.github.io/blogs/2021/11/11/cs229w-lec7/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>CS224W-Lecture 7-GNN (2) | 今天不想写代码</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/blogs/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">今天不想写代码</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">我的自留地</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/blogs/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/blogs/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://zinuocai.github.io/blogs/2021/11/11/cs229w-lec7/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/blogs/images/avatar.gif">
+      <meta itemprop="name" content="Zinuo Cai">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="今天不想写代码">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          CS224W-Lecture 7-GNN (2)
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-11-11 23:52:38" itemprop="dateCreated datePublished" datetime="2021-11-11T23:52:38+08:00">2021-11-11</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-11-12 08:10:06" itemprop="dateModified" datetime="2021-11-12T08:10:06+08:00">2021-11-12</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL; DR"></a>TL; DR</h2><p>本文是斯坦福大学 <a target="_blank" rel="noopener" href="http://web.stanford.edu/class/cs224w/index.html">CS224W: Machine Learning with Graphs</a> 第七讲的内容。</p>
+<span id="more"></span>
+<p>该讲首先从一个宏观的角度介绍了 GNN 学习的整体流程，分别是单层 GNN 网络的 Message 与 Aggregation、多层 GNN 网络的连接 (Layer connectivity)、图增强 (Graph augmentation) 与下游任务的学习 (Learning objective)。</p>
+<p>其次分析了单层 GNN 的 Message 与 Aggregation，并且介绍了三种最常见的 GNN 模型：GCN、GraphSAGE 与 GAT。</p>
+<p>然后介绍多层 GNN 网络的连接方式，但是 GNN 的层数增多会导致 over-smoothing 的问题，所以还介绍了避免该问题的方法。</p>
+<p>对于图增强和下游任务的学习这两部分将在第八讲中进行介绍。</p>
+<h2 id="1-A-General-Perspective-on-Graph-Neural-Networks"><a href="#1-A-General-Perspective-on-Graph-Neural-Networks" class="headerlink" title="1. A General Perspective on Graph Neural Networks"></a>1. A General Perspective on Graph Neural Networks</h2><p><img src="/blogs/images/image-20211108223219368.png" alt="图"  /></p>
+<p>上图是一个由六个结点六条边构成的简单图。其中结点 A 是我们的目标结点，我们希望通过 GNN 的学习到 A 结点的 embedding 表示，并且将学习到的结果应用到下游的机器学习任务中，例如分类、回归等任务。</p>
+<p>下图展示了图机器学习的流程。首先面向单层 GNN 网络，两个最重要的操作是 (1) Message 与 (2) Aggregation。多层 GNN 网络堆叠在一起，构成一个大的 GNN 模型 (Layer connectivity)。由于结点特征丢失或者图的结构问题，我们可能需要图增强 (Graph augmentation) 操作。最后，我们会将 GNN 学习到的结点的 embedding 特征交给下游机器学习任务进行学习 (Learning objective)。</p>
+<p><img src="/blogs/images/image-20211108222913077.png" alt="A General Perspective on Graph Neural Networks" style="zoom: 50%;" /></p>
+<h2 id="2-GNN-Layer"><a href="#2-GNN-Layer" class="headerlink" title="2. GNN Layer"></a>2. GNN Layer</h2><p><img src="/blogs/images/image-20211108223614427.png" alt="image-20211108223614427" style="zoom: 80%;" /></p>
+<p><strong>单层 GNN 网络在计算过程中主要分为两个步骤</strong>：</p>
+<ul>
+<li><strong>Message</strong>：网络的输入结点产生一条 message 并传递给它的邻居结点。下式中 $\mathbf{h}_{u}^{(l-1)}$ 表示结点 $u$ 在第 $l-1$ 层的中间结果；$\operatorname{MSG}^{(l)}$ 表示第 $l$ 层自定义的消息函数，该函数可能是常见的线性变换；$\mathbf{m}_{u}^{(l)}$ 表示该结点产生的消息。</li>
+</ul>
+<script type="math/tex; mode=display">
+\mathbf{m}_{u}^{(l)}=\operatorname{MSG}^{(l)}\left(\mathbf{h}_{u}^{(l-1)}\right)</script><ul>
+<li><strong>Aggregation</strong>：网络的输出结点收集它的邻居结点产生的 message 并进行聚合计算。下式中 $N(v)$ 表示结点 $v$ 的所有邻居结点的集合；$\mathrm{AGG}^{(l)}$ 是自定义的聚合函数，例如 $\mathrm{max}(\cdot), \mathrm{min}(\cdot), \mathrm{sum}(\cdot)$ 等；$\mathbf{h}_{v}^{(l)}$ 表示结点 $v$ 聚集了它的邻居结点后得到中间结果。</li>
+</ul>
+<script type="math/tex; mode=display">
+\mathbf{h}_{v}^{(l)}=\mathrm{AGG}^{(l)}\left(\left\{\mathbf{m}_{u}^{(l)}, u \in N(v)\right\}\right)</script><p>在上面 $\mathbf{m}_{u}^{(l)}$ 和 $\mathbf{h}_{v}^{(l)}$ 的定义中，我们没有考虑结点 $v$ 第 $l-1$ 的 中间结果 $\mathbf{h}_{v}^{(l-1)}$ 对于第 $l$ 层的中间结果 $\mathbf{h}_{v}^{(l)}$ 的影响，即结点 $v$ 自身的信息会在聚合的过程中的丢失。为了解决这个问题，我们对上面的消息函数和聚合函数进行修正。<strong>修正后的结果消息函数和聚合函数的定义如下</strong>。</p>
+<script type="math/tex; mode=display">
+\begin{cases}
+
+\mathbf{m}_{u}^{(l)}  = &\operatorname{MSG}^{(l)}\left(\mathbf{h}_{u}^{(l-1)}\right), u \in\{N(v) \cup v\} \\
+
+\mathbf{h}_{v}^{(l)}  = & \mathrm{AGG}^{(l)}\left(\left\{\mathbf{m}_{u}^{(l)}, u \in N(v)\right\}, \mathbf{m}_{v}^{(l)}\right)
+
+\end{cases}</script><p>基于以上对于单层 GNN 网络的理解，下面介绍三种最常见图神经网络模型：GCN，GraphSAGE 与 GAT。</p>
+<h3 id="2-1-CASE-1-GCN"><a href="#2-1-CASE-1-GCN" class="headerlink" title="2.1 CASE 1: GCN"></a>2.1 CASE 1: GCN</h3><script type="math/tex; mode=display">
+\mathbf{h}_{v}^{(l)} =\sigma\left(\mathbf{W}^{(l)} \sum_{u \in N(v)} \frac{\mathbf{h}_{u}^{(l-1)}}{|N(v)|}\right) = \sigma\left(\sum_{u \in N(v)} \mathbf{W}^{(l)} \frac{\mathbf{h}_{u}^{(l-1)}}{|N(v)|}\right)</script><p>GCN (Graph Convolutional Networks)，即图卷积神经网络的公式如上。其中，$\mathbf{m}_{u}^{(l)} =  \mathbf{W}^{(l)} \frac{\mathbf{h}_{u}^{(l-1)}}{|N(v)|}$  可以视为 GCN 的消息函数，当结点 $u$ 向它的邻居结点 $v$ 发送消息时，会除以结点 $v$ 的度进行正则化（原论文的正则化方式稍有不同）。而聚合函数 $\mathbf{h}_{v}^{(l)}=\sigma\left(\operatorname{Sum}\left(\left\{\mathbf{m}_{u}^{(l)}, u \in N(v)\right\}\right)\right)$ 则会对所有的邻居结点产生的消息进行加和，然后通过某激活函数 $\sigma(\cdot)$ 进行非线性变换。</p>
+<h3 id="2-2-CASE-2-GraphSAGE"><a href="#2-2-CASE-2-GraphSAGE" class="headerlink" title="2.2 CASE 2: GraphSAGE"></a>2.2 CASE 2: GraphSAGE</h3><script type="math/tex; mode=display">
+\mathbf{h}_{v}^{(l)}=\sigma\left(\mathbf{W}^{(l)} \cdot \operatorname{CONCAT}\left(\mathbf{h}_{v}^{(l-1)}, \operatorname{AGG}\left(\left\{\mathbf{h}_{u}^{(l-1)}, \forall u \in N(v)\right\}\right)\right)\right)</script><p>上式中，为了表示结点 $v$ 在第 $l$ 层的中间表示 $\mathbf{h}_{v}^{(l)}$，首先计算结点 $v$ 的所有邻居结点的消息  $\mathbf{h}_{u}^{(l-1)}$ （个人理解此处应该表示为 $\mathbf{m}_{u}^{l}$），然后进行消息的聚合。聚合过程分为两个阶段：</p>
+<ul>
+<li>邻居结点消息的聚合 $\operatorname{AGG}\left(\left\{\mathbf{h}_{u}^{(l-1)}, \forall u \in N(v)\right\}\right)$</li>
+<li>为了避免结点 $v$ 自身信息在聚合过程中的丢失，我们通过 $\mathrm{CONCAT}(\cdot)$ 操作将结点 $v$ 上一层的输出 $\mathbf{h}_{v}^{(l-1)}$ 和邻居结点聚合后的结果进行拼接。</li>
+</ul>
+<p>与 GCN 相比，GraphSAGE 中聚合消息函数有更多形式的表达。论文中提供的消息函数有以下三种：</p>
+<ul>
+<li><p>Mean：对邻居结点的上一层输出进行求和然后取平均。</p>
+<script type="math/tex; mode=display">
+\operatorname{AGG} = \sum_{u \in N(v)} \frac{\mathbf{h}_{u}^{(l-1)}}{|N(v)|}</script></li>
+<li><p>Pool：对邻居结点的上一层输出进行线性变换，然后进行最大池化或者平均池化操作。其中，线性变化可被视为 message 操作，池化可被视为聚合操作。</p>
+<script type="math/tex; mode=display">
+\mathrm{AGG}=\operatorname{Mean}\left(\left\{\operatorname{MLP}\left(\mathbf{h}_{u}^{(l-1)}\right), \forall u \in N(v)\right\}\right)</script></li>
+<li><p>LSTM：将 LSTM 用于随机随机排列的邻居结点。此时将 LSTM 进行聚合操作。</p>
+<script type="math/tex; mode=display">
+\mathrm{AGG}=\operatorname{LSTM}\left(\left[\mathbf{h}_{u}^{(l-1)}, \forall u \in \pi(N(v))\right]\right)</script></li>
+</ul>
+<p>此外，GraphSAGE 在实现中为每一层的中间结果增加了 $\ell_{2}$ 正则化的操作。添加正则化的目的是使得结点 $v$ 在进行聚合时，它的所有邻居结点 $N(v)$ 都有相同的 $\ell_{2}$ 范数；否则，结点 $v$ 的两个邻居结点 $u_1, u_2$ 的上一层的表示 $\mathbf{h}_{u_1}^{(l-1)}, \mathbf{h}_{u_2}^{(l-1)}$的数据范围不同。在一些情况下，增加正则化的操作可以提升图的表现性能。</p>
+<h3 id="2-3-CASE-3-GAT"><a href="#2-3-CASE-3-GAT" class="headerlink" title="2.3 CASE 3: GAT"></a>2.3 CASE 3: GAT</h3><p>GAT (Graph Attention Networks) 的思想是将注意力机制（Attention）引入到聚合操作中。即：</p>
+<script type="math/tex; mode=display">
+\mathbf{h}_{v}^{(l)}=\sigma\left(\sum_{u \in N(v)} \alpha_{v u} \mathbf{W}^{(l)} \mathbf{h}_{u}^{(l-1)}\right)</script><p>$\alpha_{v u}$ 表示结点 $u$ 产生的 message 对于结点 $v$ 的重要性。我们可以认为 GCN 和 GraphSAGE 中, $\alpha_{uv} = \frac{1}{|N(v)|}$。GCN 和 GraphSAGE 中 $\alpha_{uv}$ 的值只和结点 $v$ 的度相关，它的所有的邻居结点被认为具有相同的重要性。但是，基于注意力机制，聚合操作可以给更重要的邻居结点较大的权重。结点的重要性取决于它所在的环境，但是也是可以通过模型的训练进行学习。</p>
+<p>下面介绍<strong>引入注意力机制</strong>的方法。</p>
+<ol>
+<li><p>计算 attention coefficient：假设 $a(\cdot, \cdot)$ 是某种注意力机制，那么可以依据下式计算 $e_{vu}$， $e_{vu}$ 表示结点 $u$ 产生的 meassage 对于 结点 $v$ 的重要性。</p>
+<script type="math/tex; mode=display">
+e_{v u}=a\left(\mathbf{W}^{(l)} \mathbf{h}_{u}^{(l-1)}, \mathbf{W}^{(l)} \boldsymbol{h}_{v}^{(l-1)}\right)</script></li>
+<li><p>正则化：使用 softmax 的方法进行正则化，将 $e_{uv}$ 转换成 $\alpha_{uv}$，满足 $\sum_{u \in N(v)} \alpha_{v u}=1$。</p>
+</li>
+</ol>
+<script type="math/tex; mode=display">
+\alpha_{v u}=\frac{\exp \left(e_{v u}\right)}{\sum_{k \in N(v)} \exp \left(e_{v k}\right)}</script><ol>
+<li>根据式（9）计算结点 $v$ 聚合后的结果。如下图所示，通过步骤1、2可以计算结点 A 的邻居结点 B/C/D 的 attention weight $\alpha_{AB}, \alpha_{AD}, \alpha_{AC}$, 然后计算结点 A 的下一层中间表示为$\mathbf{h}_{A}^{(l)}=\sigma\left(\alpha_{A B} \mathbf{W}^{(l)} \mathbf{h}_{B}^{(l-1)}+\alpha_{A C} \mathbf{W}^{(l)} \mathbf{h}_{C}^{(l-1)}+ \alpha_{A C} \mathbf{W}^{(l)} \mathbf{h}_{C}^{(l-1)}\right)$。</li>
+</ol>
+<p><img src="/blogs/images/image-20211109121418611.png" alt="image-20211109121418611" style="zoom:50%;" /></p>
+<p>这里展示一种注意力机制 $a(\cdot, \cdot)$ 的选取：对于上一层的中间表示 $\mathbf{h}_{A}^{(l-1)}, \mathbf{h}_{B}^{(l-1)}$，可以先计算它们产生的消息，拼接之后进行线性变换。线性变换的参数可以随着图神经网络的下游任务一起进行训练。</p>
+<p><img src="/blogs/images/image-20211111214023361.png" alt="注意力机制"></p>
+<p>Multi-head attention 可以稳定注意力机制的训练过程。具体的实现方式是创建多组注意力机制的参数，每组参数都会计算出一个中间表示结果，最终使用拼接（concatenation）或者求和（summation）的方法将输出结果聚集。</p>
+<h2 id="3-GNN-Layers-in-Pratice"><a href="#3-GNN-Layers-in-Pratice" class="headerlink" title="3. GNN Layers in Pratice"></a>3. GNN Layers in Pratice</h2><p><img src="/blogs/images/image-20211109124636402.png" alt="A suggested GNN Layer" style="zoom: 50%;" /></p>
+<p>GNN 的设计可以将在许多领域被证明有用的现代深度学习的模块纳入考虑之中。推荐的单层 GNN layer 如上图所示：</p>
+<ul>
+<li>Linear：线性变换</li>
+<li>BatchNorm：稳定神经网络训练</li>
+<li>Dropout：防止过拟合</li>
+<li>Activation：非线性变换</li>
+<li>Attention/Gating：为不同的邻居结点分配 attention weight</li>
+</ul>
+<h2 id="4-Stacking-Layers-of-a-GNN"><a href="#4-Stacking-Layers-of-a-GNN" class="headerlink" title="4. Stacking Layers of a GNN"></a>4. Stacking Layers of a GNN</h2><p>以上部分讨论了单层 GNN layer 的设计，接下来考虑如何连接多层 GNN 层从而构建一个大的 GNN 网络。</p>
+<p>首先，最直接的连接方式是顺序连接，如下图所示。其中 $x_v$ 表示结点 $v$ 的初始 embedding 特征，它将作为第一层 GNN Layer 的输入。</p>
+<p><img src="/blogs/images/image-20211111151057809.png" alt="Sequentially Stack GNN Layers" style="zoom: 67%;" /></p>
+<p>但是，堆叠较多的 GNN 层的问题是模型会 over-smoothing——所有结点的 embedding 特征趋同。我们可以从感受野的角度理解 over-smoothing 产生的原因。在 GNN 模型中，某一结点感受野可以理解为影响该结点 embedding 结果的“邻居”结点。一个有了 $K$ 个 GNN 层的模型，每个结点都会有与它距离至多为 $K$ 的 $K$-hop 邻居结点集合。当模型的层数增加时，重叠的两个不同的结点相重合的 K-hop 邻居结点集合将迅速扩大。如下图所示，两个黄色结点均是我们的目标结点，但是随着 $K$ 从 1 增长到 3，重合的邻居结点数量也迅速扩散。</p>
+<p><img src="/blogs/images/image-20211111151523692.png" alt="GNN 的感受野"></p>
+<p>因此，如果我们为您堆叠较多的 GNN 层，不同的结点可以共享的 $K$-hop 邻居结点的数量增多，导致不同结点的 embedding 特征趋同，也就是 over-smoothing 问题的产生。</p>
+<p>为了避免的 over-smoothing 的问题的产生，我们通常设计层数较少的 GNN 模型。那么，如何在有限的 GNN 层数的条件下增强图神经网络的表达能力呢？课程介绍了两种可以尝试的实现方案。</p>
+<p><strong>方案一：增加单 GNN 层的复杂度</strong></p>
+<p><img src="/blogs/images/image-20211111153656652.png" alt="增加单 GNN 层的复杂度"></p>
+<p>第一种方案是增加单 GNN 层的复杂度。如上图所示，在前面的介绍中，message 和 aggregation 函数都是单层线性变换。我们可以使用深度神经网络替换这两种变换，从而增强单 GNN 层的表达能力。</p>
+<p><strong>方案二：增加无消息传递的网络层</strong></p>
+<p><img src="/blogs/images/image-20211111154046035.png" alt="GNN 中的预处理层与后处理层" style="zoom: 80%;" /></p>
+<p>GNN 网络中不是所有的神经网络层都需要像邻居结点传递消息。我们可以在模型中增加预处理层与后处理层。实际中，这些层的增加对于模型的表达能力的提升效果显著。</p>
+<ul>
+<li>预处理层可以应用在我们需要对结点特征进行编码时，例如图像、文本数据。</li>
+<li>后处理曾可以应用在我们想利用图神经网络的结点 embedding 进行下游分类、回归等任务。 </li>
+</ul>
+<p><strong>方案二：增加 Skip Connection</strong></p>
+<p><img src="/blogs/images/image-20211111154850416.png" alt="增加 Skip Connection 的 GNN 模型" style="zoom:80%;" /></p>
+<p>增加 Skip Connection 的思想来源于 ResNet 与 DenseNet 等含有 short-cut 的深度神经网络：前一层网络的输入可能会被重新使用，加和或者拼接到后续网络层的输出中。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/blogs/2021/09/01/GPU-Memory-Analysis-for-Inference-Tasks/" rel="prev" title="机器学习推理任务 GPU 显存使用分析">
+      <i class="fa fa-chevron-left"></i> 机器学习推理任务 GPU 显存使用分析
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/blogs/2021/11/12/instructions-for-phds/" rel="next" title="读 Instructions for PhD Students 有感">
+      读 Instructions for PhD Students 有感 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#TL-DR"><span class="nav-text">TL; DR</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-A-General-Perspective-on-Graph-Neural-Networks"><span class="nav-text">1. A General Perspective on Graph Neural Networks</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-GNN-Layer"><span class="nav-text">2. GNN Layer</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-CASE-1-GCN"><span class="nav-text">2.1 CASE 1: GCN</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-CASE-2-GraphSAGE"><span class="nav-text">2.2 CASE 2: GraphSAGE</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-CASE-3-GAT"><span class="nav-text">2.3 CASE 3: GAT</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-GNN-Layers-in-Pratice"><span class="nav-text">3. GNN Layers in Pratice</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-Stacking-Layers-of-a-GNN"><span class="nav-text">4. Stacking Layers of a GNN</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Zinuo Cai</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/blogs/archives/">
+        
+          <span class="site-state-item-count">3</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Zinuo Cai</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/blogs/lib/anime.min.js"></script>
+  <script src="/blogs/lib/velocity/velocity.min.js"></script>
+  <script src="/blogs/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/blogs/js/utils.js"></script>
+
+<script src="/blogs/js/motion.js"></script>
+
+
+<script src="/blogs/js/schemes/muse.js"></script>
+
+
+<script src="/blogs/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+      
+
+<script>
+  if (typeof MathJax === 'undefined') {
+    window.MathJax = {
+      loader: {
+        source: {
+          '[tex]/amsCd': '[tex]/amscd',
+          '[tex]/AMScd': '[tex]/amscd'
+        }
+      },
+      tex: {
+        inlineMath: {'[+]': [['$', '$']]},
+        tags: 'ams'
+      },
+      options: {
+        renderActions: {
+          findScript: [10, doc => {
+            document.querySelectorAll('script[type^="math/tex"]').forEach(node => {
+              const display = !!node.type.match(/; *mode=display/);
+              const math = new doc.options.MathItem(node.textContent, doc.inputJax[0], display);
+              const text = document.createTextNode('');
+              node.parentNode.replaceChild(text, node);
+              math.start = {node: text, delim: '', n: 0};
+              math.end = {node: text, delim: '', n: 0};
+              doc.math.push(math);
+            });
+          }, '', false],
+          insertedScript: [200, () => {
+            document.querySelectorAll('mjx-container').forEach(node => {
+              let target = node.parentNode;
+              if (target.nodeName.toLowerCase() === 'li') {
+                target.parentNode.classList.add('has-jax');
+              }
+            });
+          }, '', false]
+        }
+      }
+    };
+    (function () {
+      var script = document.createElement('script');
+      script.src = '//cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
+      script.defer = true;
+      document.head.appendChild(script);
+    })();
+  } else {
+    MathJax.startup.document.state(0);
+    MathJax.texReset();
+    MathJax.typeset();
+  }
+</script>
+
+    
+
+  
+
+</body>
+</html>

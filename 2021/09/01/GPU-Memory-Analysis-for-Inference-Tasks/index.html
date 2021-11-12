@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/blogs/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/blogs/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/blogs/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/blogs/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/blogs/css/main.css">
+
+
+<link rel="stylesheet" href="/blogs/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"zinuocai.github.io","root":"/blogs/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="1. 总体目标使用 GPU 加速机器学习任务时，程序运行时常见的错误 GPU 的显存空间不足：RuntimeError: CUDA Error: out of memory。熟练的炼丹师往往会通过减小 batch size，降低程序对 GPU 显存的需求，使程序正常执行。但是，为什么减小 batch size 可以降低显存需求，是否能够提前预测程序需要的显存大小呢？本文以机器学习推理任务为例，通过">
+<meta property="og:type" content="article">
+<meta property="og:title" content="机器学习推理任务 GPU 显存使用分析">
+<meta property="og:url" content="https://zinuocai.github.io/blogs/2021/09/01/GPU-Memory-Analysis-for-Inference-Tasks/index.html">
+<meta property="og:site_name" content="今天不想写代码">
+<meta property="og:description" content="1. 总体目标使用 GPU 加速机器学习任务时，程序运行时常见的错误 GPU 的显存空间不足：RuntimeError: CUDA Error: out of memory。熟练的炼丹师往往会通过减小 batch size，降低程序对 GPU 显存的需求，使程序正常执行。但是，为什么减小 batch size 可以降低显存需求，是否能够提前预测程序需要的显存大小呢？本文以机器学习推理任务为例，通过">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://zinuocai.github.io/blogs/images/image-20210831191029151.png">
+<meta property="og:image" content="https://zinuocai.github.io/blogs/images/image-20210831194341135.png">
+<meta property="article:published_time" content="2021-09-01T00:34:32.000Z">
+<meta property="article:modified_time" content="2021-11-12T00:10:00.148Z">
+<meta property="article:author" content="Zinuo Cai">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://zinuocai.github.io/blogs/images/image-20210831191029151.png">
+
+<link rel="canonical" href="https://zinuocai.github.io/blogs/2021/09/01/GPU-Memory-Analysis-for-Inference-Tasks/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>机器学习推理任务 GPU 显存使用分析 | 今天不想写代码</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/blogs/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">今天不想写代码</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">我的自留地</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/blogs/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/blogs/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://zinuocai.github.io/blogs/2021/09/01/GPU-Memory-Analysis-for-Inference-Tasks/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/blogs/images/avatar.gif">
+      <meta itemprop="name" content="Zinuo Cai">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="今天不想写代码">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          机器学习推理任务 GPU 显存使用分析
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-09-01 08:34:32" itemprop="dateCreated datePublished" datetime="2021-09-01T08:34:32+08:00">2021-09-01</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-11-12 08:10:00" itemprop="dateModified" datetime="2021-11-12T08:10:00+08:00">2021-11-12</time>
+              </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="1-总体目标"><a href="#1-总体目标" class="headerlink" title="1. 总体目标"></a>1. 总体目标</h2><p>使用 GPU 加速机器学习任务时，程序运行时常见的错误 GPU 的显存空间不足：<code>RuntimeError: CUDA Error: out of memory</code>。熟练的炼丹师往往会通过减小 batch size，降低程序对 GPU 显存的需求，使程序正常执行。但是，为什么减小 batch size 可以降低显存需求，是否能够提前预测程序需要的显存大小呢？本文以机器学习推理任务为例，通过简单的实际案例，对如上的问题进行回答。</p>
+<span id="more"></span>
+<h2 id="2-理论分析"><a href="#2-理论分析" class="headerlink" title="2. 理论分析"></a>2. 理论分析</h2><h3 id="2-1-谁占用了显存？"><a href="#2-1-谁占用了显存？" class="headerlink" title="2.1 谁占用了显存？"></a>2.1 谁占用了显存？</h3><p>当前对机器学习通用的定义是 <strong>机器学习 = 数据 + 模型 + 算法</strong>。在训练任务中，我们通过在训练集中优化我们的算法，从而获得在验证集或者测试集上表现优异的模型。而在推理任务中，我们使用生成的模型在测试数据上进行前向计算，获得预测的结果。</p>
+<p><strong>在推理任务中，占用 GPU 显存的主要包括三个部分：模型权重、输入输出以及中间结果。</strong></p>
+<ul>
+<li>模型权重：深度学习模型往往是结构相似的 layer 堆砌而成，例如卷积层、池化层、全连接层、激活函数层。一些 layer 是有参数的，例如卷积层的参数是一个高维的卷积核，全连接层的参数是一个二维矩阵。也有一些 layer 没有参数，例如激活函数层、池化层等。</li>
+<li>中间结果：前向计算中，前一层的输出对应后一层的输入，连接相邻两层的中间结果也需要 GPU 显存来保存。</li>
+<li>输入输出：相较于模型权重和中间结果，输入输出占用的 GPU 显存比较小。</li>
+</ul>
+<p>这一结论在 OSDI’20 的论文 <a target="_blank" rel="noopener" href="https://www.usenix.org/conference/osdi20/presentation/gujarati"><em>Serving DNNs like Clockwork: Performance Predictability from the Bottom Up</em></a> 中也得到了验证。该论文在设计机器学习推理系统的显存管理模块时，将显存占用分为了 Workspace/IOCache/PageCache。这三部分分别对应于中间结果、输入输出和模型权重的显存占用。</p>
+<h3 id="2-2-占用了多少显存？"><a href="#2-2-占用了多少显存？" class="headerlink" title="2.2 占用了多少显存？"></a>2.2 占用了多少显存？</h3><p>模型权重、中间结果和输入输出往往都是结构化的数据，在 PyTorch 和 MXNet 等深度学习框架中都是以高维数组的形式保存。因此，我们可以通过数学计算的方式直接求解显存使用情况。</p>
+<p>我们以自定义的一个模型为例，该模型有三层卷积层和三层全连接层组成。卷积层的 channel/kernel size/padding/stride 等参数均在代码中体现。模型的输入为 3×224×224,我们设置的 batch size 为 32。我们逐步分析这些层的模型权重和输入输出占用的显存。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> mxnet.gluon.nn <span class="keyword">as</span> nn</span><br><span class="line"><span class="keyword">import</span> mxnet.ndarray <span class="keyword">as</span> nd</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">my_model_conv</span>():</span></span><br><span class="line">    my_model = nn.HybridSequential()</span><br><span class="line">    my_model.add(</span><br><span class="line">        nn.Conv2D(channels=<span class="number">64</span>, kernel_size=<span class="number">3</span>, padding=(<span class="number">1</span>, <span class="number">1</span>)),</span><br><span class="line">        nn.Conv2D(channels=<span class="number">256</span>, kernel_size=<span class="number">7</span>, padding=(<span class="number">1</span>, <span class="number">1</span>), strides=(<span class="number">7</span>, <span class="number">7</span>)),</span><br><span class="line">        nn.Conv2D(channels=<span class="number">512</span>, kernel_size=<span class="number">7</span>, padding=(<span class="number">1</span>, <span class="number">1</span>), strides=(<span class="number">7</span>, <span class="number">7</span>)),</span><br><span class="line">        nn.Dense(<span class="number">4096</span>, activation=<span class="string">&quot;relu&quot;</span>),</span><br><span class="line">        nn.Dense(<span class="number">4096</span>, activation=<span class="string">&quot;relu&quot;</span>),</span><br><span class="line">        nn.Dense(<span class="number">1000</span>)</span><br><span class="line">    )</span><br><span class="line">    <span class="keyword">return</span> my_model</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">&#x27;__main__&#x27;</span>:</span><br><span class="line">    my_model = my_model_conv()</span><br><span class="line">    my_model.initialize()</span><br><span class="line">    my_model.hybridize()</span><br><span class="line">    X = nd.zeros((<span class="number">32</span>, <span class="number">3</span>, <span class="number">224</span>, <span class="number">224</span>))</span><br><span class="line">    y = my_model.forward(X)</span><br><span class="line">    my_model.export(<span class="string">&quot;my_model_conv&quot;</span>)</span><br></pre></td></tr></table></figure>
+<p>首先是最简单的输入输出的显存占用。模型的输入为 (32, 3, 224, 224)，参数的数量为 $num = 32 <em> 3 </em> 224 <em> 224$，每个浮点数需要 32 bit，也就是 4 bytes 的存储空间，因此输入的显存占用为 $num</em>4 \text{ bytes} = num*4 / 1024 / 1024 \text{ MiB} = 18.375 \text{ MiB}$。模型的输出为 (32, 1000)，显存空间为$0.12 \text{ MiB}$。</p>
+<p>对于卷积层，输入的维度为$(N, C, H, W)$, 卷积核的 padding 为 $P$, stride 为 $S$, kernel size 为 $K$, 输出通道数为 $C\prime$。 那么它输出的 $H\prime$  为 $\frac{H + 2<em>P- K}{S} + 1$，输出的 $W\prime$  为 $\frac{W + 2</em>P- K}{S} + 1$，输出的维度为$(N, C\prime, H\prime, W\prime)$，卷积核的参数数量为 $C<em>C\prime</em>K^2$。因此对于第一个卷积层，它的输出通道数为 64, padding/stride 为 1，kernel size 为 3。所以</p>
+<script type="math/tex; mode=display">
+H\prime = \frac{H + 2*P- K}{S} + 1 = (224 + 2 - 3) \div 1 + 1 = 224</script><script type="math/tex; mode=display">
+W\prime = \frac{W + 2*P- K}{S} + 1 = (224 + 2 - 3) \div 1 + 1 = 224</script><p>第一个卷积层的输出维度则为 (32, 64, 224, 224)。这对应的显存大小为数量为 $num = 32 <em> 64 </em> 224 <em> 224$，所有的输出占用的空间为 $num</em>4 \text{ bytes} = num<em>4 / 1024 / 1024 \text{ MiB} = 392 \text{ MiB}$。第一个卷积层的参数量为 $params = 3 </em> 64 <em> 3 </em>3$，占用的显存空间为$6.75 \text{ KiB}$。</p>
+<p>而全连接的计算逻辑相对而言简单很多，在此不再赘述，可以参考以下链接进一步深入了解如何计算显存使用情况。</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/49842046">经典神经网络参数的计算【不定期更新】</a></li>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/31558973">科普帖：深度学习中GPU和显存分析</a></li>
+</ul>
+<p>我们将自定义的模型汇总，得到结果如下：</p>
+<p><img src="/blogs/images/image-20210831191029151.png" alt="自定义模型显存使用汇总"></p>
+<p>最终，我们得到理论上的计算结果：</p>
+<ul>
+<li>模型权重的显存占用为 $0.01 + 3.06 + 24.5 + 128 + 64 + 15.63 = 235.2 \text{ MiB}$。</li>
+<li>中间结果的显存占用为 $392 + 32 + 1 + 0.5 + 0.5 + 0.12 = 426.1 \text{ MiB}$。</li>
+<li>输入输出的显存占用为 $18.38 + 0.12 = 18.5 \text{ MiB}$。</li>
+</ul>
+<h2 id="3-代码分析"><a href="#3-代码分析" class="headerlink" title="3. 代码分析"></a>3. 代码分析</h2><h3 id="3-1-代码解读"><a href="#3-1-代码解读" class="headerlink" title="3.1 代码解读"></a>3.1 代码解读</h3><p>上面模型定义的代码将导出两个文件 <code>my_model_conv-0000.params</code> 和 <code>my_model_conv-symbol.json</code>。前者是模型的权重，后者定义了模型的结果。我们继续使用 MXNet 导入我们定义好的模型，进行推理任务。</p>
+<p>首先导入需要的 Python Package，并且自定义了一个 MemoryLogger。MemoryLogger 在初始化的时候会打印已经使用的显存、剩余显存和当前 GPU 的总的显存。每次调用 <code>MemoryLogger.log()</code> 函数时，会打印已经使用的显存、剩余显存和与上次相比又增加的显存。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> logging</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> GPUtil</span><br><span class="line"><span class="keyword">import</span> mxnet <span class="keyword">as</span> mx</span><br><span class="line"><span class="keyword">import</span> mxnet.ndarray <span class="keyword">as</span> nd</span><br><span class="line"></span><br><span class="line">logging.getLogger().setLevel(logging.INFO)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MemoryLogger</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span>(<span class="params">self, device_id: <span class="built_in">int</span></span>):</span></span><br><span class="line">        gpu = GPUtil.getGPUs()[device_id]</span><br><span class="line">        logging.info(<span class="string">f&#x27;Initializing: Used memory = <span class="subst">&#123;gpu.memoryUsed&#125;</span>MiB, Free memory = <span class="subst">&#123;gpu.memoryFree&#125;</span>MiB, &#x27;</span></span><br><span class="line">                     <span class="string">f&#x27;Total memory = <span class="subst">&#123;gpu.memoryTotal&#125;</span>MiB&#x27;</span>)</span><br><span class="line"></span><br><span class="line">        self.device_id = device_id</span><br><span class="line">        self.currentMemoryUsed = gpu.memoryUsed</span><br><span class="line">        self.allocatedMemory = gpu.memoryUsed</span><br><span class="line">        self.context = mx.gpu(device_id)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">log</span>(<span class="params">self, mark: <span class="built_in">str</span></span>):</span></span><br><span class="line">        <span class="comment"># synchronize</span></span><br><span class="line">        nd.waitall()</span><br><span class="line">        gpu = GPUtil.getGPUs()[self.device_id]</span><br><span class="line">        freeMem = gpu.memoryFree</span><br><span class="line">        usedMem = gpu.memoryUsed</span><br><span class="line">        logging.info(<span class="string">f&#x27;<span class="subst">&#123;mark&#125;</span>: Allocate memory = <span class="subst">&#123;usedMem - self.allocatedMemory: <span class="number">.1</span>f&#125;</span>MiB, &#x27;</span></span><br><span class="line">                     <span class="string">f&#x27;Free memory = <span class="subst">&#123;freeMem: <span class="number">.1</span>f&#125;</span>MiB, Increased memory = <span class="subst">&#123;usedMem - self.currentMemoryUsed: <span class="number">.1</span>f&#125;</span>&#x27;</span>)</span><br><span class="line">        self.currentMemoryUsed = usedMem</span><br></pre></td></tr></table></figure>
+<p>在主函数中，第一步是定义一些全局变量，更重要的是初始化 CUDA 上下文。我们初始化上下文的方法是在 GPU 上定义一个维度为 (1,) 的变量 <code>dummy_input</code>。这个变量在后续的代码中不会使用。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">gpu_ctx = mx.gpu()</span><br><span class="line">input_shape = (<span class="number">32</span>, <span class="number">3</span>, <span class="number">224</span>, <span class="number">224</span>)</span><br><span class="line">memory_logger = MemoryLogger(<span class="number">0</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># step 1: initialize CUDA context</span></span><br><span class="line">dummy_input = nd.zeros(shape=(<span class="number">1</span>,), ctx=gpu_ctx)</span><br><span class="line"></span><br><span class="line">memory_logger.log(<span class="string">&quot;Step 1 (initialize CUDA context)&quot;</span>)</span><br></pre></td></tr></table></figure>
+<p>第二步则是定义模型的输入，模型的输入是一个 (32, 3, 224, 224) 的高维矩阵。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># step 2: define input</span></span><br><span class="line"><span class="keyword">from</span> collections <span class="keyword">import</span> namedtuple</span><br><span class="line"></span><br><span class="line">inputs = nd.zeros(shape=input_shape, ctx=gpu_ctx)</span><br><span class="line">inputs = inputs.as_in_context(gpu_ctx)</span><br><span class="line">Batch = namedtuple(<span class="string">&#x27;Batch&#x27;</span>, [<span class="string">&#x27;data&#x27;</span>])</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&#x27;define input, theoretical memory used = <span class="subst">&#123;<span class="number">32</span> * <span class="number">3</span> * <span class="number">224</span> * <span class="number">224</span> * <span class="number">4</span> / <span class="number">1024</span> / <span class="number">1024</span>: <span class="number">.3</span>f&#125;</span> MiB&#x27;</span>)</span><br><span class="line"></span><br><span class="line">memory_logger.log(<span class="string">&quot;Step 2 (define input)&quot;</span>)</span><br></pre></td></tr></table></figure>
+<p>第三步则是初始化模型结构并且为模型分配空间。MXNet 可以通过 <code>mx.symbol.load</code> 方法读取上述的模型结构 <code>my_model_conv-symbol.json</code>文件来初始化模型结构，然后调用 <code>mx.mod.Module.bind</code> 方法为模型分配空间。注意，<code>mx.mod.Module.bind</code> 方法在申请显存是也会为输入数据申请显存，因此，该步打印的显存增加的数量比实际模型的占用空间多出一个模型输入需要的空间。最后通过<code>mx.mod.Module.set_params</code>方法将 CPU 端的模型参数拷贝到 GPU 的显存中。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># step 3: load model</span></span><br><span class="line">model_name = <span class="string">&#x27;my_model_conv&#x27;</span></span><br><span class="line">m = mx.mod.Module(symbol=mx.symbol.load(<span class="string">f&quot;models/<span class="subst">&#123;model_name&#125;</span>-symbol.json&quot;</span>),</span><br><span class="line">                  context=gpu_ctx,</span><br><span class="line">                  data_names=[<span class="string">&quot;data&quot;</span>], label_names=[])</span><br><span class="line">m.bind(for_training=<span class="literal">False</span>, data_shapes=[(<span class="string">&quot;data&quot;</span>, input_shape)])</span><br><span class="line"></span><br><span class="line">arg_params, aux_params = mx.model.load_params(<span class="string">f&quot;models/<span class="subst">&#123;model_name&#125;</span>&quot;</span>, <span class="number">0</span>)</span><br><span class="line">m.set_params(arg_params, aux_params)</span><br><span class="line"></span><br><span class="line">memory_logger.log(<span class="string">&quot;Step 3 (load model)&quot;</span>)</span><br></pre></td></tr></table></figure>
+<p>最后一步是进行前向计算。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">m.forward(Batch([inputs]), is_train=<span class="literal">False</span>)</span><br><span class="line">memory_logger.log(<span class="string">&quot;Step 4 (forward computation)&quot;</span>)</span><br></pre></td></tr></table></figure>
+<h3 id="3-2-结果分析"><a href="#3-2-结果分析" class="headerlink" title="3.2 结果分析"></a>3.2 结果分析</h3><p>执行上述代码，我们得到了以下的输出：</p>
+<p><img src="/blogs/images/image-20210831194341135.png" alt="执行结果"></p>
+<p>我们主要分析结果中的 <strong>Increased memory</strong> 的结果。</p>
+<ul>
+<li>Step 1 的上下文初始化阶段。MXNet 需要使用 641 MiB 的显存空间进行 CUDA 的上下文加载，实验显示 PyTorch 也需要类似的操作进行 GPU 上下文初始化。</li>
+<li>Step 2 在定义输入时，理论上 (32, 3, 224, 224) 的张量需要的空间为 18.375 MiB 的显存，实际上分配了 20 MiB 的显存。这主要和 MXNet 的显存管理机制相关。为了避免频繁调用 <code>cudaMalloc</code> 函数申请显存，MXNet 会维护一个 memory pool。因此，我们看到当需要 18.375 MiB 的显存时，申请的空间会略高，多余的空间有 MXNet 底层的显存管理机制进行维护。</li>
+<li>Step 3 在为模型权重分配显存，增加的显存量为 258 MiB，而理论上的显存应该为模型本身的显存 235.2 MiB 与 重复定义的模型输入的显存 18.375 MiB 之和  254 MiB。考虑到显存碎片问题，多出的 4 MiB 可在接受范围。</li>
+<li>Step 4 进行前向计算出的中间结果的显存与理论计算值相同。</li>
+</ul>
+<h2 id="4-总结"><a href="#4-总结" class="headerlink" title="4. 总结"></a>4. 总结</h2><p>本文分析了在机器学习推理任务中 GPU 的显存使用情况。通过结果可以发现，降低 batch size 来避免 out of memory 的问题主要是减少了输入输出和中间结果需要的显存量，而不会对模型权重需要的显存带来帮助。我们着重分析了推理阶段的显存使用情况，训练阶段由于反向传播的存在，GPU 显存的使用情况会更加复杂。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/blogs/2021/11/11/cs229w-lec7/" rel="next" title="CS224W-Lecture 7-GNN (2)">
+      CS224W-Lecture 7-GNN (2) <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%80%BB%E4%BD%93%E7%9B%AE%E6%A0%87"><span class="nav-text">1. 总体目标</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E7%90%86%E8%AE%BA%E5%88%86%E6%9E%90"><span class="nav-text">2. 理论分析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E8%B0%81%E5%8D%A0%E7%94%A8%E4%BA%86%E6%98%BE%E5%AD%98%EF%BC%9F"><span class="nav-text">2.1 谁占用了显存？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E5%8D%A0%E7%94%A8%E4%BA%86%E5%A4%9A%E5%B0%91%E6%98%BE%E5%AD%98%EF%BC%9F"><span class="nav-text">2.2 占用了多少显存？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E4%BB%A3%E7%A0%81%E5%88%86%E6%9E%90"><span class="nav-text">3. 代码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E4%BB%A3%E7%A0%81%E8%A7%A3%E8%AF%BB"><span class="nav-text">3.1 代码解读</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E7%BB%93%E6%9E%9C%E5%88%86%E6%9E%90"><span class="nav-text">3.2 结果分析</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E6%80%BB%E7%BB%93"><span class="nav-text">4. 总结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Zinuo Cai</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/blogs/archives/">
+        
+          <span class="site-state-item-count">3</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Zinuo Cai</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/blogs/lib/anime.min.js"></script>
+  <script src="/blogs/lib/velocity/velocity.min.js"></script>
+  <script src="/blogs/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/blogs/js/utils.js"></script>
+
+<script src="/blogs/js/motion.js"></script>
+
+
+<script src="/blogs/js/schemes/muse.js"></script>
+
+
+<script src="/blogs/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+      
+
+<script>
+  if (typeof MathJax === 'undefined') {
+    window.MathJax = {
+      loader: {
+        source: {
+          '[tex]/amsCd': '[tex]/amscd',
+          '[tex]/AMScd': '[tex]/amscd'
+        }
+      },
+      tex: {
+        inlineMath: {'[+]': [['$', '$']]},
+        tags: 'ams'
+      },
+      options: {
+        renderActions: {
+          findScript: [10, doc => {
+            document.querySelectorAll('script[type^="math/tex"]').forEach(node => {
+              const display = !!node.type.match(/; *mode=display/);
+              const math = new doc.options.MathItem(node.textContent, doc.inputJax[0], display);
+              const text = document.createTextNode('');
+              node.parentNode.replaceChild(text, node);
+              math.start = {node: text, delim: '', n: 0};
+              math.end = {node: text, delim: '', n: 0};
+              doc.math.push(math);
+            });
+          }, '', false],
+          insertedScript: [200, () => {
+            document.querySelectorAll('mjx-container').forEach(node => {
+              let target = node.parentNode;
+              if (target.nodeName.toLowerCase() === 'li') {
+                target.parentNode.classList.add('has-jax');
+              }
+            });
+          }, '', false]
+        }
+      }
+    };
+    (function () {
+      var script = document.createElement('script');
+      script.src = '//cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
+      script.defer = true;
+      document.head.appendChild(script);
+    })();
+  } else {
+    MathJax.startup.document.state(0);
+    MathJax.texReset();
+    MathJax.typeset();
+  }
+</script>
+
+    
+
+  
+
+</body>
+</html>
