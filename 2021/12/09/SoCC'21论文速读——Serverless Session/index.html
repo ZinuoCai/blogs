@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/blogs/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/blogs/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/blogs/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/blogs/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/blogs/css/main.css">
+
+
+<link rel="stylesheet" href="/blogs/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"zinuocai.github.io","root":"/blogs/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="TL; DRSoCC 是云计算领域的顶会。2021 年 SoCC 共计录用 46 篇论文，其中无服务器计算有两个 Session，共收录 7 篇论文。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SoCC&#39; 21 Serverless Session">
+<meta property="og:url" content="https://zinuocai.github.io/blogs/2021/12/09/SoCC'21%E8%AE%BA%E6%96%87%E9%80%9F%E8%AF%BB%E2%80%94%E2%80%94Serverless%20Session/index.html">
+<meta property="og:site_name" content="今天不写代码">
+<meta property="og:description" content="TL; DRSoCC 是云计算领域的顶会。2021 年 SoCC 共计录用 46 篇论文，其中无服务器计算有两个 Session，共收录 7 篇论文。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2021-12-09T13:20:00.000Z">
+<meta property="article:modified_time" content="2021-12-09T13:23:21.704Z">
+<meta property="article:author" content="Zinuo Cai">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://zinuocai.github.io/blogs/2021/12/09/SoCC'21%E8%AE%BA%E6%96%87%E9%80%9F%E8%AF%BB%E2%80%94%E2%80%94Serverless%20Session/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>SoCC' 21 Serverless Session | 今天不写代码</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/blogs/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">今天不写代码</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">我的自留地</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/blogs/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/blogs/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://zinuocai.github.io/blogs/2021/12/09/SoCC'21%E8%AE%BA%E6%96%87%E9%80%9F%E8%AF%BB%E2%80%94%E2%80%94Serverless%20Session/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/blogs/images/avatar.gif">
+      <meta itemprop="name" content="Zinuo Cai">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="今天不写代码">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          SoCC' 21 Serverless Session
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-12-09 21:20:00 / 修改时间：21:23:21" itemprop="dateCreated datePublished" datetime="2021-12-09T21:20:00+08:00">2021-12-09</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL; DR"></a>TL; DR</h2><p>SoCC 是云计算领域的顶会。2021 年 SoCC 共计录用 46 篇论文，其中无服务器计算有两个 Session，共收录 7 篇论文。<span id="more"></span>本文对其中的 4 篇论文进行简要的介绍，其中 VSP[1] 从服务的使用者角度考虑问题，尝试打破云计算提供商的技术壁垒；Kraken[2] 解决有向无环图应用的资源配置问题；Faa$T [3] 考虑 serverless 框架中的存储问题，通过设计本地的缓存代替吞吐量受限制的 remote storage；ServerMore[4] 提出将 serverless 的工作负载和 serverful 的虚拟机工作负载混合执行，进一步提高整体的资源利用率。</p>
+<p>完整的论文列表链接 <a target="_blank" rel="noopener" href="https://dblp.uni-trier.de/db/conf/cloud/socc2021.html。">https://dblp.uni-trier.de/db/conf/cloud/socc2021.html。</a></p>
+<h2 id="1-VSP"><a href="#1-VSP" class="headerlink" title="1. VSP"></a>1. VSP</h2><p>On Merits and Viability of Multi-Cloud Serverless</p>
+<p>针对市场上的多家云服务厂商提供的无服务器计算，本文设计了一个虚拟的无服务器计算服务的提供者 (VSP, virtual serverless provider)。</p>
+<p>VSP 提出的目的是比较不同的云计算厂商的无服务器计算费用，从而避免开发者局限于一种云计算厂商的困境。同时，VSP 可以促进云计算提供商之间的“内卷”，鼓励他们提供更便宜、高性能的计算服务。</p>
+<p>VSP 的提出有以下的理论基础：(1) 无服务器计算函数通常是轻量级的，因此可以“无痛”地在多家云计算提供商之间部署和迁移服务；(2) 存在较多开源的无服务器计算框架；(3) 已有的工作研究无服务器计算中函数性能的可预测性，有助于优化服务厂商的选择。</p>
+<p><strong>评价</strong>：本文提出的 VSP 从使用无服务器计算的开发者角度考虑问题，通过比较不同厂商提供的服务性能与价格进行选择。VSP 的提出，可以打破无服务器计算的开山之作 <em>Cloud Programming Simplified: A Berkeley View on Serverless Computing</em> 中提出的各个厂商之间的服务生态壁垒，给予开发者更多的云服务选择空间。</p>
+<h2 id="2-Kraken"><a href="#2-Kraken" class="headerlink" title="2. Kraken"></a>2. Kraken</h2><p>Kraken : Adaptive Container Provisioning for Deploying Dynamic DAGs in Serverless Platforms</p>
+<p>微服务带动了以云服务为基础的应用的流行，这些微服务常常以有向无环图 (DAG, directed acyclic graph) 的形式被调度执行。由于这些应用大多数是面向用户服务的，因此有着明确的 SLO 的需求。无服务器计算的短执行时间、细粒度资源分配与良好的扩展性等特点可以满足有着 SLO 需求的微服务应用的需求，但是由于 serverless 对有向无环图的执行顺序无法感知，因此导致了资源的过度分配等问题。</p>
+<p>基于以上的考虑，我们提出了 Kraken。它是一个面向无服务器计算框架的 workflow-aware 的资源管理框架，它可以最大限度地减少为应用程序 DAG 配置的容器数量，同时确保符合 SLO 的需求。我们将 Kraken 部署在开源的无服务器计算框架 OpenFaaS 上，在一个多节点的 Kubernetes 集群中进行实验。实验结果表明，Kraren 可以减少容器的数量达到 76%，将系统资源利用率提高了 4 倍，在集群范围内节约 48% 的能源。 </p>
+<h2 id="3-Faa-T"><a href="#3-Faa-T" class="headerlink" title="3. Faa$T"></a>3. Faa$T</h2><p>Faa$T: A Transparent Auto-Scaling Cache for Serverless Applications</p>
+<p>由于无服务器计算中函数 stateless 的特点，函数需要依赖于外部存储 (remote storage) 保存必要的状态。已有的工作在解决该问题时面临以下三个问题：(1) 忽略了函数变化的特点 (adaptivity)；(2) 无法依据数据读写模式进行扩缩 (scalability)；(3) 对用户不透明，违背了 serverless 的设计初衷 (transparent)。</p>
+<p>我们通过对 Microsoft Azure 的无服务器计算服务进行分析，拟合函数的数据读写模式。并且以此为基础，在 Azure 上实现了 Faa$T。实验表明 Faa$T 可以提升 serverless 函数的性能平均达到 57%，最高可以达到 92%。并且，与已有的通过外部存储作为 caching 系统的方法相比，Faa$T可以降低绝大多数的开销。</p>
+<h2 id="4-ServerMore"><a href="#4-ServerMore" class="headerlink" title="4. ServerMore"></a>4. ServerMore</h2><p>ServerMore: Opportunistic Execution of Serverless Functions in the Cloud</p>
+<p>因为 serverless 函数的执行特点是短执行时间与低资源需求，因此 ServerMore 尝试将 serverless 函数与 serverful 的虚拟机调度在同一台物理机上执行任务 (co-locating)。ServerMore 的整体目标是保证 serverful 工作负载的性能损失在可接受的范围内，同时执行 serverless  函数，从而提高系统的资源利用率。</p>
+<p>ServerMore 在实现 co-locating 的过程中，主要解决以下的挑战： 从<strong>性能</strong>角度，一要保证将 serverless 函数调度到运行着 serverful 的虚拟机的物理机上时，不会对虚拟机上的任务有过多的性能影响；二是 co-locating 一定会引起 CPU, memory bandwidth 与 cache 的资源竞争，因此还需要协调资源间的共享；三是考虑性能的可预测性，对于虚拟机任务 ServerMore 实现了一套性能预测的机制。从系统<strong>自适应性</strong>的角度，从co-locating 一方面要考虑 serverful 的虚拟机任务的 arrival 模式，另一方面要考虑 serverless 函数的资源需求与执行时间的多样性。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>无服务器计算是几年来云计算的热点，除了云计算顶会 SoCC 以外，其他系统顶会也广泛涉及，例如 OSDI’ 21 中的 <em>Dorylus: Affordable, Scalable, and Accurate GNN Training with Distributed CPU Servers and Serverless Threads</em> 将无服务器计算将无服务器计算与图神经网络结合。</p>
+<p>本文不涉及以下三篇论文，有兴趣的同学可以自己研究：</p>
+<ol>
+<li><p><em>Tell me when you are sleepy and what may wake you up!</em> （与 serverless 的关联度不如其他论文紧密）</p>
+</li>
+<li><p><em>Speedo: Fast dispatch and orchestration of serverless workflows</em>（论文的写作实在是拗口，“不忍卒读”）</p>
+</li>
+<li><p><em>Atoll: A Scalable Low-Latency Serverless Platform</em></p>
+</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/blogs/2021/11/13/SoCC'%2021%20%E8%AE%BA%E6%96%87%E9%80%9F%E8%AF%BB%E2%80%94%E2%80%94ML%20Session/" rel="prev" title="SoCC' 21 论文速读——ML Session">
+      <i class="fa fa-chevron-left"></i> SoCC' 21 论文速读——ML Session
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#TL-DR"><span class="nav-text">TL; DR</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-VSP"><span class="nav-text">1. VSP</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-Kraken"><span class="nav-text">2. Kraken</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-Faa-T"><span class="nav-text">3. Faa$T</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-ServerMore"><span class="nav-text">4. ServerMore</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-text">总结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Zinuo Cai</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/blogs/archives/">
+        
+          <span class="site-state-item-count">5</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Zinuo Cai</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/blogs/lib/anime.min.js"></script>
+  <script src="/blogs/lib/velocity/velocity.min.js"></script>
+  <script src="/blogs/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/blogs/js/utils.js"></script>
+
+<script src="/blogs/js/motion.js"></script>
+
+
+<script src="/blogs/js/schemes/muse.js"></script>
+
+
+<script src="/blogs/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>
