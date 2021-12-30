@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/blogs/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/blogs/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/blogs/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/blogs/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/blogs/css/main.css">
+
+
+<link rel="stylesheet" href="/blogs/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"zinuocai.github.io","root":"/blogs/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="OverviewAntMan 是发表在 OSDI’20 Machine Learning Session 的论文，主要解决深度学习的 GPU 集群资源使用率低的问题。一作是肖文聪（Wencong Xiao，https:&#x2F;&#x2F;wencongxiao.github.io&#x2F;），北航与微软亚洲研究院联培博士，现任职于阿里巴巴 PAI group。代表作包括 AntMan (OSDI’20) 和 Gandiv">
+<meta property="og:type" content="article">
+<meta property="og:title" content="AntMan--Dynamic Scaling on GPU Clusters for Deep Learning">
+<meta property="og:url" content="https://zinuocai.github.io/blogs/2021/12/30/AntMan/index.html">
+<meta property="og:site_name" content="今天不写代码">
+<meta property="og:description" content="OverviewAntMan 是发表在 OSDI’20 Machine Learning Session 的论文，主要解决深度学习的 GPU 集群资源使用率低的问题。一作是肖文聪（Wencong Xiao，https:&#x2F;&#x2F;wencongxiao.github.io&#x2F;），北航与微软亚洲研究院联培博士，现任职于阿里巴巴 PAI group。代表作包括 AntMan (OSDI’20) 和 Gandiv">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228161343891.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228232930713.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228193409487.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228194121975.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228201835645.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228202203689.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228210634012.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228212107240.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228222730165.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228223550574.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228223607063.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228223631589.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228223649095.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228223701862.png">
+<meta property="article:published_time" content="2021-12-30T01:49:38.000Z">
+<meta property="article:modified_time" content="2021-12-30T01:53:58.636Z">
+<meta property="article:author" content="Zinuo Cai">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228161343891.png">
+
+<link rel="canonical" href="https://zinuocai.github.io/blogs/2021/12/30/AntMan/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>AntMan--Dynamic Scaling on GPU Clusters for Deep Learning | 今天不写代码</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/blogs/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">今天不写代码</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">我的自留地</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/blogs/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/blogs/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://zinuocai.github.io/blogs/2021/12/30/AntMan/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/blogs/images/avatar.gif">
+      <meta itemprop="name" content="Zinuo Cai">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="今天不写代码">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          AntMan--Dynamic Scaling on GPU Clusters for Deep Learning
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-12-30 09:49:38 / 修改时间：09:53:58" itemprop="dateCreated datePublished" datetime="2021-12-30T09:49:38+08:00">2021-12-30</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="Overview"><a href="#Overview" class="headerlink" title="Overview"></a>Overview</h2><p>AntMan 是发表在 OSDI’20 Machine Learning Session 的论文，主要解决<strong>深度学习的 GPU 集群资源使用率低的问题</strong>。一作是<strong>肖文聪</strong>（Wencong Xiao，<a target="_blank" rel="noopener" href="https://wencongxiao.github.io/">https://wencongxiao.github.io/</a>），北航与微软亚洲研究院联培博士，现任职于阿里巴巴 PAI group。代表作包括 AntMan (OSDI’20) 和 Gandiva (OSDI’ 18)。</p>
+<span id="more"></span>
+<p>之前读过这篇文章，初读时由于基础知识的缺乏，所以没有再读时体会深刻。现在重读觉得这篇文章一气呵成，尤其是图表的设计自成体系，13 张图和 5 张表勾勒出文章的骨架。本文就主要从这 18 张图表介绍 AntMan 的设计，体会顶会论文是如何炼成的。Let’s go!</p>
+<h2 id="1-Background"><a href="#1-Background" class="headerlink" title="1. Background"></a>1. Background</h2><p><img src="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228161343891.png" alt=""></p>
+<p><strong>问题描述</strong>：集群中 GPU 使用率较低。<strong>图1</strong>展示了在实际生产集群中 GPU 资源的使用情况：仅有 20% 的机器，GPU 的显存使用率超过 50%；仅有 10% 的机器，GPU 的计算单元使用率超过 80%。</p>
+<p><strong>原因阐释</strong>：低使用率通常源于两个方面。一是为了避免任务的抢占，集群往往给用户的任务分配独占的 GPU 显卡，但是任务无法充分使用被分配的显存资源或者计算资源；二是对于需要多张显卡执行机器学习任务的模型，他们需要花费较长的时间等待 GPU 的分配。而且等待的过程中已经分配的 GPU 既不会执行任务，也不会释放给其他用户使用。<strong>图2</strong>展示了当用户需要使用多块 GPU 时，GPU 的平均空载时间。</p>
+<p><strong>现有方案及不足</strong>：可行的解决方案是允许多个任务使用同一块 GPU 执行任务。但是，packing 一方面会引起计算资源竞争，导致该 GPU 上的任务完成效率同时下降。另一方面则是显存资源竞争，显存资源竞争的后果则是引起 <code>RuntimeError: CUDA out of memory</code> 的问题。</p>
+<p><img src="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228232930713.png" alt=""></p>
+<p><strong>模型训练的资源使用特点</strong>：模型训练的特征 GPU 资源的低使用率与较长的空闲等待时间之外，任务需要的资源也动态变化。<strong>图3</strong>和<strong>图4</strong>分别显示了 DeepFM 模型与 ESPnet 模型在模型训练时 GPU 的显存使用与计算单元的使用率动态变化的特点。图4 似乎更有意思。我们知道，模型结构决定了模型的计算特征：计算密集型或者 IO 密集型。<strong>在单个模型的内部， ESPnet 出现了计算密集型与 IO 密集型的分化</strong>： 1200～1400s 是计算密集型（SM util 较高）， 1400～1600s 是 IO 密集型（Memory util 较高）。</p>
+<p>除了归纳模型训练的资源使用特点，AntMan 还结合了以下实践得出的机会点进行系统的设计：</p>
+<ul>
+<li>模型使用的显存比较小。<strong>图5</strong>对一周机器学习的训练任务进行统计，<strong>图5(a)</strong> 显示90%的机器学习训练任务，模型本身占用的显存都小于300MB。</li>
+<li>模型训练过程中 mini-batch 的训练时间较短。<strong>图5(b)</strong> 显示每个 mini-batch 的训练时间普遍小于1500毫秒。</li>
+<li>训练过程周期性变化。我们可以利用周期性变化的特点，分析在某种资源配置下模型训练的性能，从而对 resource-guarantee 与 opportunistic 的任务提供更合理的资源配置。</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228193409487.png" alt=""></p>
+<h2 id="2-Design"><a href="#2-Design" class="headerlink" title="2. Design"></a>2. Design</h2><p>这一部分主要讨论 AntMan 如何设计应对 GPU 共享的挑战。首先介绍的是对深度学习框架的扩展，从而支持显存和计算单元的动态分配。然后讨论 AntMan 中在 master node 的 Global Scheduler 与在slave node的Local Coordinator 相互协作，共同调度 GPU 资源设计，支持对深度学习框架的扩展。最后介绍上述的调度方案在阿里云平台的实践。</p>
+<h3 id="2-1-Dynamic-Scheduling"><a href="#2-1-Dynamic-Scheduling" class="headerlink" title="2.1 Dynamic Scheduling"></a>2.1 Dynamic Scheduling</h3><p><img src="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228194121975.png" alt=""></p>
+<p>首先介绍显存资源的动态分配。</p>
+<p><strong>图6</strong>对比了现有的深度学习框架与 AntMan 的显存分配设计。<strong>图6(a, b, c)</strong> 展示深度学习框架在在申请显存后，当变量被销毁时，申请的显存不会释放，而是缓存在深度学习框架自己维护的显存池中。例如，这里 <a target="_blank" rel="noopener" href="https://github.com/pytorch/pytorch/blob/master/c10/cuda/CUDACachingAllocator.cpp">https://github.com/pytorch/pytorch/blob/master/c10/cuda/CUDACachingAllocator.cpp</a> 介绍了 PyTorch 是如何将显存据为己有，自主分配。<strong>图6(d, e, f)</strong> 则是 AntMan 的显存机制。当显存资源有限时，AntMan 会降低 opportunistic 任务的显存分配，因此部分的计算张量只能拷贝到 CPU 设备的内存中；当显存资源有盈余时，内存上的张量又会重新拷贝到 GPU 显存中。<strong>图7</strong>则是介绍了上述的动态分配显存资源的机制如何和机器学习训练任务结合。</p>
+<p><img src="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228201835645.png" alt=""></p>
+<p>其次介绍计算单元的动态分配。在现代操作系统中，<code>cgroup</code> 的设计保证了进程在使用 CPU 计算时的性能隔离，但是 GPU 却没有保证多个进程性能隔离的机制。因此，动态分配计算单元的目的则是保证 opportunistic 的任务不会影响到 resource-guarantee 任务的完成时间 (JCT, job completion time)。</p>
+<p><img src="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228202203689.png" alt=""></p>
+<p><strong>图8</strong> 展示了动态分配计算资源的方案。当我们在使用 GPU 执行任务时，实际上是使用 GPU 的流处理器 (SM, stream multiprocessor) 执行自定义的 kernel 函数。图上蓝色的方格表示 Job A 的 kernel 函数执行流，Job A 是 resource-guarantee 的任务；绿色方格表示 Job B的 kernel 函数执行流，它是 opportunistic 类型的任务。<strong>图8(a)</strong> 中是 Job A 独占时的 GPU 使用情况，我们发现 GPU 并未被充分使用。在 <strong>图8(b)</strong> 如果我们将 Job B 不加限制地扔到 GPU 上执行时，尽管 GPU 的 cycle 被完全占据了，但是 Job A 的 JCT 大受影响。</p>
+<p>AntMan 的计算资源分配如 <strong>图8(c)</strong> 所示。具体的实现方案是在深度学习框架中引入 <code>GpuOpManager</code>模块。它的作用是控制 GPU 的 kernel 函数发送到 GPU 设备频率。<code>GpuOpManager</code>会在 GPU 设备空闲的时候将 opportunistic 任务的 GPU 算子发送到 GPU 上执行，从而不会影响 resource-guarantee 任务的执行效率。</p>
+<h3 id="2-2-Collaborative-Scheduler"><a href="#2-2-Collaborative-Scheduler" class="headerlink" title="2.2 Collaborative Scheduler"></a>2.2 Collaborative Scheduler</h3><p><img src="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228210634012.png" alt=""></p>
+<p><strong>图9</strong>展示了分别位于 master node 与 slave node 的 Global Scheduler 与 Local Coordinator 相互协作，调度 GPU 资源的过程。整体来说，这一部分的设计中规中矩，master 与 local 相互协作调度的设计受到 Kubernetes 的影响痕迹明显，没有 Dynamic Scheduling 部分的设计巧妙。</p>
+<p>Global Scheduler 维护全局的信息，包括硬件设备的信息 (GPU Computing  Utilization 与 GPU Memory Usage) 和深度学习任务的执行信息 (mini-batch 的执行时间，最高、最低与平均显存使用信息以及 CPU 端的内存信息)，这些信息都是 slave node 反馈给 master node 的。Global Scheduler 利用这些信息更有效的指导深度学习任务的安置与资源分配。</p>
+<h3 id="2-3-Scheduling-Policy"><a href="#2-3-Scheduling-Policy" class="headerlink" title="2.3 Scheduling Policy"></a>2.3 Scheduling Policy</h3><p>Design 的最后一部分介绍了资源动态分配与主从节点协作调度在实际生产集群中的实践。</p>
+<p>设计的<strong>总目标</strong>是通过引入 opportunistic 类型的任务使用空闲的 GPU cycle，从而提高 GPU 集群的资源使用率。</p>
+<p>我们重点关注 Local Coordinator 的设计。Local Coordinator 的设计融入了动态分配显存与计算资源考量，主要考虑了以下三个问题：</p>
+<ul>
+<li>如何保证 resource-guarantee 任务的性能？</li>
+<li>如何处理 resource-guarantee 任务的需求激增情况？</li>
+<li>如何使用贪心的方法最大化 opportunistic 任务的表现？</li>
+</ul>
+<p>对于第一个问题，AntMan 的做法是首先保证 resource-guarantee 的任务稳定执行；然后为 opportunistic 的任务分配 GPU 显存和计算单元；最后观察 resource-guarantee 的性能是否受到了影响。判断性能是否受到影响的方法则是观察 mini-batch 的执行时间进行判断。</p>
+<p>对于第二个问题，如果是 memory 突变的情况，首先使用 host memory 作为临时存储，减少 opportunistic 任务的显存使用；接着增加 resource-guarantee 任务的显存分配。同样的方法适用于计算单元需求的激增。</p>
+<p>最后一个问题的场景是多 GPU 任务在等待 GPU 资源时，已经分配到的 GPU 空闲的情况。对于这个问题，AntMan 的解决方案是使用贪心算法，最大化 GPU 显存的使用效率。<strong>图10</strong>展示了使用贪心算法的现实依据——不同的模型对 GPU 显存的限制变化在性能上的感知差距很大，例如降低 SR 模型 90% 的显存分配仅带来 25% 的性能损失，而降低 ResNet 模型 10% 的显存就引起 60% 的性能损失。因此，AntMan 在 opportunistic 任务竞争的场景下优先将 GPU 分配给能够带来性能提升的任务（ResNet 的优先级高于 SR，“会哭得孩子有奶吃”？）。</p>
+<p><img src="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228212107240.png" alt=""></p>
+<h2 id="3-Evaluation"><a href="#3-Evaluation" class="headerlink" title="3. Evaluation"></a>3. Evaluation</h2><p>实验结果分成三个部分。一是在 benchmark 上分析 AntMan 提出的动态资源调度的效果；二是在公开数据集上进行测试；三是在阿里云上带有 5000 块异构的 GPU 集群上的效果测试。</p>
+<h3 id="3-1-Benchmark"><a href="#3-1-Benchmark" class="headerlink" title="3.1 Benchmark"></a>3.1 Benchmark</h3><p><strong>实验一：Dynamic GPU memory scaling.</strong></p>
+<p><img src="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228222730165.png" alt=""></p>
+<p><strong>表1</strong>展示了两个不同的任务，其中 Job A 是 opportunistic 类型的任务，Job B 是 resource guarantee 类型的任务。在第 26 分钟，两个任务会同时执行在显存为 32 GB 的 GPU 上。<strong>表2</strong>提供了不同的解决方案以及对应的结果，其中抢占或者 Pack 会导致其中某一个任务崩溃，而 FIFO 与 UMem 方法不能保证 resource guarantee 任务的效率。AntMan 的动态显存分配满足要求。而且，我们可以发现，Job A 的性能下降也是非常低的。</p>
+<p><strong>实验二：Efficient memory shrinkage and growth.</strong></p>
+<p><img src="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228223550574.png" alt=""></p>
+<p><strong>图11</strong>展示了 AntMan 在进行显存的分配与压缩需要的额外开销。其中,<strong>图11(b)</strong> 分别列举了 VGG16，InceptionV3 与 GoogleNet 在显存变化 17GB，16GB和4GB时的开销时间，以此证明显存动态分配的开销微乎其微。</p>
+<p><strong>实验三：Dynamic GPU computation unit scaling.</strong></p>
+<p><img src="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228223607063.png" alt=""></p>
+<p>为了展示 AntMan 动态的计算资源分配不会影响 resource-guarantee 任务的性能，作者将 AntMan 与 Packing 模式相对比。实验的模型是 ResNet50（opportunistic，计算密集型）与ESPNet（resource-guarantee，非计算密集型）。<strong>图12(a)</strong> 展示直接进行 Packing 会导致 ESPNet 模型的 SM 使用率受到 ResNet50 的约束，而 AntMan 会自适应的调节 ResNet50 的 SM 使用率，确保 ESPNet 模型正常执行。实验结果表明，Packing 模式，ESPNet 的执行时间为 105.2 分钟，严重受到影响；而 AntMan 的执行时间保持在 20 分钟左右，<strong>niubility</strong>！</p>
+<h3 id="3-2-Trace-Experiment"><a href="#3-2-Trace-Experiment" class="headerlink" title="3.2 Trace Experiment"></a>3.2 Trace Experiment</h3><p>这部分的实验数据来自微软在 Gandiva 中使用的数据集，模型的分布如<strong>表3</strong>。实验对比了 YARN-CS 与 Gandiva，结果在<strong>图13</strong>。实验结果显示 AntMan 可以达到更短的平均任务完成时间 (JCT) 与最大任务完成时间 (makespan)。</p>
+<p><img src="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228223631589.png" alt=""></p>
+<p><img src="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228223649095.png" alt=""></p>
+<h3 id="3-3-Cluster-Experiment"><a href="#3-3-Cluster-Experiment" class="headerlink" title="3.3 Cluster Experiment"></a>3.3 Cluster Experiment</h3><p>最后一部分实验在案例云的集群中进行测试，集群拥有超过 5000 块 GPU。<strong>表4</strong>展示了部署 AntMan 前（2019年12月）后（2020年4月）任务在分配 GPU 时的等待时间。（表格数据是否存在问题，为什么 2020年4月Average 时间比 90% 和 95% 分位的时间长？）<strong>表5</strong>对10000个训练任务的 mini-batch 训练时间进行分析，发现99%的任务 mini-batch 时间误差在 10 毫秒内，认为是没有收到影响。</p>
+<p><img src="https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20211228223701862.png" alt=""></p>
+<h2 id="4-Conclusion"><a href="#4-Conclusion" class="headerlink" title="4. Conclusion"></a>4. Conclusion</h2><p>没啥好总结的，谈一谈我重读这篇文章发现的一些问题与研究点，希望可以抛砖引玉。</p>
+<ul>
+<li><p><strong>研究如何更好地模型组合共享资源</strong>：什么样的模型结构任务适合去共享 GPU 资源呢？计算密集型与 IO 密集型能否进行更好地组合，以此能够充分利用 GPU 为我们提供的计算单元与显存这两种资源？</p>
+</li>
+<li><p><strong>研究减少显存对模型性能的影响</strong>： Scheduling Policy 中多个 opportunistic 任务的显存分配中提到了不同的模型对显存分配降低时的性能损失不同，AntMan 使用的方法是 profile 不同模型在不同显存分配下的性能表现，然后根据测量的结果进行分配？是否用更系统或者理论的方法，通过分析模型的结构来预测性能的变化？</p>
+</li>
+<li><strong>研究共享任务的计算单元分配问题</strong>：还是上述场景，任务的执行时间和分配的计算单元的速率有很大的关系，AntMan 却没有明确说明这些任务计算单元是如何分配的。有没有分配计算单元的方法，胜过没有任何限制的抢占得到的效率？Dynamic Scheduling 中的计算单元的动态分配值得参考。</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/blogs/2021/12/09/SoCC'21%E8%AE%BA%E6%96%87%E9%80%9F%E8%AF%BB%E2%80%94%E2%80%94Serverless%20Session/" rel="prev" title="SoCC' 21 论文速读——Serverless Session">
+      <i class="fa fa-chevron-left"></i> SoCC' 21 论文速读——Serverless Session
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Overview"><span class="nav-text">Overview</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-Background"><span class="nav-text">1. Background</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-Design"><span class="nav-text">2. Design</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-Dynamic-Scheduling"><span class="nav-text">2.1 Dynamic Scheduling</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-Collaborative-Scheduler"><span class="nav-text">2.2 Collaborative Scheduler</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-Scheduling-Policy"><span class="nav-text">2.3 Scheduling Policy</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-Evaluation"><span class="nav-text">3. Evaluation</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-Benchmark"><span class="nav-text">3.1 Benchmark</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-Trace-Experiment"><span class="nav-text">3.2 Trace Experiment</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-Cluster-Experiment"><span class="nav-text">3.3 Cluster Experiment</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-Conclusion"><span class="nav-text">4. Conclusion</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Zinuo Cai</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/blogs/archives/">
+        
+          <span class="site-state-item-count">6</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Zinuo Cai</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/blogs/lib/anime.min.js"></script>
+  <script src="/blogs/lib/velocity/velocity.min.js"></script>
+  <script src="/blogs/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/blogs/js/utils.js"></script>
+
+<script src="/blogs/js/motion.js"></script>
+
+
+<script src="/blogs/js/schemes/muse.js"></script>
+
+
+<script src="/blogs/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+</body>
+</html>
