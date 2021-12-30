@@ -78,7 +78,7 @@ $$
 
 我们将自定义的模型汇总，得到结果如下：
 
-![自定义模型显存使用汇总](/blogs/images/image-20210831191029151.png)
+![自定义模型显存使用汇总](https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20210831191029151.png)
 
 最终，我们得到理论上的计算结果：
 
@@ -180,7 +180,7 @@ memory_logger.log("Step 4 (forward computation)")
 
 执行上述代码，我们得到了以下的输出：
 
-![执行结果](/blogs/images/image-20210831194341135.png)
+![执行结果](https://raw.githubusercontent.com/ZinuoCai/Image-Bed/image-bed/2021/image-20210831194341135.png)
 
 我们主要分析结果中的 **Increased memory** 的结果。
 
