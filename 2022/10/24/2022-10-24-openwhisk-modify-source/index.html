@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Zinuo Cai">
+    
+    <title>
+        
+            OpenWhisk 源码部署与修改 |
+        
+        Zinuo&#39;s Blogs
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/null">
+    
+<link rel="stylesheet" href="/fontawesome/css/fontawesome.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/css/regular.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/css/solid.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/css/brands.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"example.com","root":"/","language":"zh-CN"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":false,"expand_all":false,"init_open":true},"style":{"primary_color":"#CC0000","logo":null,"favicon":null,"avatar":"/images/avatar.jpg","font_size":null,"font_family":null,"hover":{"shadow":false,"scale":false},"first_screen":{"enable":false,"header_transparent":false,"background_img":"/images/bg.svg","description":"Keep writing and Keep loving.","font_color":null,"hitokoto":{"enable":false}},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":false,"preload":false},"code_copy":{},"code_block":{"tools":{"enable":false,"style":"default"},"highlight_theme":"default"},"side_tools":{},"pjax":{"enable":false},"lazyload":{"enable":false},"version":"3.5.1"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 个月前","year":"%s 年前"};
+    KEEP.language_code_block = {"copy":"复制代码","copied":"已复制","fold":"折叠代码块","folded":"已折叠"};
+  </script>
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            
+<header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            
+            <a class="logo-title" href="/">
+               Zinuo&#39;s Blogs
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="post-page-container">
+        <div class="article-content-container">
+
+            <div class="article-title">
+                <span class="title-hover-animation">OpenWhisk 源码部署与修改</span>
+            </div>
+
+            
+                <div class="article-header">
+                    <div class="avatar">
+                        <img src="/images/avatar.jpg">
+                    </div>
+                    <div class="info">
+                        <div class="author">
+                            <span class="name">Zinuo Cai</span>
+                            
+                                <span class="author-label">Lv1</span>
+                            
+                        </div>
+                        <div class="meta-info">
+                            
+<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        
+            <i class="fa-regular fa-calendar-plus"></i>&nbsp;
+        
+        <span class="pc">2022-10-24 15:09:04</span>
+        <span class="mobile">2022-10-24 15:09</span>
+    </span>
+    
+        <span class="article-update-date article-meta-item">
+        <i class="fas fa-file-pen"></i>&nbsp;
+        <span class="pc">2022-10-24 15:22:40</span>
+    </span>
+    
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/Serverless/">Serverless</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        | <a href="/tags/OpenWhisk/">OpenWhisk</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+    
+    
+</div>
+
+                        </div>
+                    </div>
+                </div>
+            
+
+            <div class="article-content keep-markdown-body">
+                <h2 id="Prerequest"><a href="#Prerequest" class="headerlink" title="Prerequest"></a>Prerequest</h2><ol>
+<li>已经参考 <a class="link"   target="_blank" rel="noopener" href="https://blogs.zinuo.info/2022/10/24/2022-10-24-openwhisk-deploy/" >https://blogs.zinuo.info/2022/10/24/2022-10-24-openwhisk-deploy/<i class="fas fa-external-link-alt"></i></a> 搭建好了 kubernetes 集群并部署了 openwhisk</li>
+<li>IDEA（JAVA 程序的 IDE，可以使用学校邮箱获取专业版）</li>
+<li>JAVA</li>
+<li>SCALA</li>
+<li>解决 gradle 的国内使用卡顿问题<ul>
+<li><p>在 &#x2F;home&#x2F;${user} 的目录下面新建文件夹 <code>.gradle</code></p>
+</li>
+<li><p>在新建的文件夹创建文件 <code>init.gradle</code> 并写入阿里云的镜像配置</p>
+   <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">allprojects &#123;</span><br><span class="line">    repositories &#123;</span><br><span class="line">        maven &#123;</span><br><span class="line">            url &#x27;&lt;https://maven.aliyun.com/repository/public/&gt;&#x27;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ol>
+<h2 id="编译"><a href="#编译" class="headerlink" title="编译"></a>编译</h2><p>下载 OpenWhisk 源码并回滚到 v1.0 版本</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 源码下载</span></span><br><span class="line">git <span class="built_in">clone</span> https://github.com/apache/openwhisk.git</span><br><span class="line"><span class="comment"># 切换分支</span></span><br><span class="line">git checkout -b dev</span><br><span class="line"><span class="comment"># 版本回滚</span></span><br><span class="line">git reset --hard 2c62</span><br></pre></td></tr></table></figure>
+
+<p>编译各个组件需要的 Docker 镜像</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./gradlew distDocker</span><br></pre></td></tr></table></figure>
+
+<p>上述命令的真正执行文件在 <code>gradle/docker.gradle</code></p>
+<p>可能出现的问题：</p>
+<p><strong>error #1</strong>. 在 build 镜像时发现下面的报错导致 <code>scala</code> 无法 build 成功。需要我们为 apk 进行换源处理。</p>
+<ul>
+<li><p>报错</p>
+  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">fetch &lt;https://alpine.global.ssl.fastly.net/alpine/v3.12/main/x86_64/APKINDEX.tar.gz&gt;</span><br><span class="line">ERROR: &lt;https://alpine.global.ssl.fastly.net/alpine/v3.12/main:&gt; Permission denied</span><br><span class="line">WARNING: Ignoring APKINDEX.a38da714.tar.gz: No such file or directory</span><br><span class="line">fetch &lt;https://alpine.global.ssl.fastly.net/alpine/v3.12/community/x86_64/APKINDEX.tar.gz&gt;</span><br><span class="line">ERROR: &lt;https://alpine.global.ssl.fastly.net/alpine/v3.12/community:&gt; Permission denied</span><br><span class="line">WARNING: Ignoring APKINDEX.1c27734a.tar.gz: No such file or directory</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>寻找出问题的指令</p>
+  <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">RUN apk add --update sed curl bash &amp;&amp; apk update &amp;&amp; apk upgrade</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>替换文件 <code>common/scala/Dockerfile</code> 中的第24行代码</p>
+  <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">RUN sed -i <span class="string">&#x27;s/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g&#x27;</span> /etc/apk/repositories</span><br></pre></td></tr></table></figure></li>
+</ul>
+<p><strong>error #2</strong>. <code>core/invoker/Dockerfile</code> 文件中出现环境变量设置的笔误，第20-22行修改为：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ENV UID=1001 \\</span><br><span class="line">    NOT_ROOT_USER=owuser \\</span><br><span class="line">    DOCKER_VERSION=18.06.3-ce</span><br></pre></td></tr></table></figure>
+<p>成功 build 出以下的镜像</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">user-events                        latest                                      7fb49762ccdf   43 minutes ago   478MB</span><br><span class="line">whisk/user-events                  latest                                      7fb49762ccdf   43 minutes ago   478MB</span><br><span class="line">cache-invalidator-cosmosdb         latest                                      c6161cd74c55   43 minutes ago   480MB</span><br><span class="line">whisk/cache-invalidator-cosmosdb   latest                                      c6161cd74c55   43 minutes ago   480MB</span><br><span class="line">ow-utils                           latest                                      4c7a0b300101   44 minutes ago   942MB</span><br><span class="line">whisk/ow-utils                     latest                                      4c7a0b300101   44 minutes ago   942MB</span><br><span class="line">standalone                         latest                                      d702571183da   47 minutes ago   551MB</span><br><span class="line">whisk/standalone                   latest                                      d702571183da   47 minutes ago   551MB</span><br><span class="line">invoker                            latest                                      37ccbf6b0a48   48 minutes ago   530MB</span><br><span class="line">whisk/invoker                      latest                                      37ccbf6b0a48   48 minutes ago   530MB</span><br><span class="line">controller                         latest                                      9b0ec3e6ed27   48 minutes ago   548MB</span><br><span class="line">whisk/controller                   latest                                      9b0ec3e6ed27   48 minutes ago   548MB</span><br><span class="line">scala                              latest                                      326f2230949b   52 minutes ago   359MB</span><br><span class="line">whisk/scala                        latest                                      326f2230949b   52 minutes ago   359MB</span><br></pre></td></tr></table></figure>
+
+<h2 id="源码修改、重新编译、部署"><a href="#源码修改、重新编译、部署" class="headerlink" title="源码修改、重新编译、部署"></a>源码修改、重新编译、部署</h2><h3 id="源码修改"><a href="#源码修改" class="headerlink" title="源码修改"></a>源码修改</h3><p>文件 <code>core/invoker/src/main/scala/org/apache/openwhisk/core/containerpool/kubernetes/KubernetesClient.scala</code> 是真正的执行启动 docker 容器的文件。</p>
+<p>在第 138 行可以看到 <code>run</code> 函数。</p>
+<p>在第 144 行调用了 <code>podBuilder.buildPodSpec</code> 函数构造 pod 的说明。我们的修改应该在这个位置。</p>
+<h3 id="重新编译"><a href="#重新编译" class="headerlink" title="重新编译"></a>重新编译</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> core/invoker</span><br><span class="line">docker build -t invoker:v1 .</span><br><span class="line"><span class="comment"># 将部署好的镜像拉近进群</span></span><br><span class="line">kind load docker-image invoker:v1</span><br></pre></td></tr></table></figure>
+
+<h3 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h3><p>mycluster.yaml 文件如下：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">whisk:</span></span><br><span class="line">  <span class="attr">ingress:</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">NodePort</span></span><br><span class="line">    <span class="attr">apiHostName:</span> <span class="string">localhost</span></span><br><span class="line">    <span class="attr">apiHostPort:</span> <span class="number">31001</span></span><br><span class="line">    <span class="attr">useInternally:</span> <span class="literal">false</span></span><br><span class="line"></span><br><span class="line"><span class="attr">nginx:</span></span><br><span class="line">  <span class="attr">httpsNodePort:</span> <span class="number">31001</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># disable affinity</span></span><br><span class="line"><span class="attr">affinity:</span></span><br><span class="line">  <span class="attr">enabled:</span> <span class="literal">false</span></span><br><span class="line"><span class="attr">toleration:</span></span><br><span class="line">  <span class="attr">enabled:</span> <span class="literal">false</span></span><br><span class="line"><span class="attr">invoker:</span></span><br><span class="line">  <span class="attr">options:</span> <span class="string">&quot;-Dwhisk.kubernetes.user-pod-node-affinity.enabled=false&quot;</span></span><br><span class="line">  <span class="comment"># must use KCF as kind uses containerd as its container runtime</span></span><br><span class="line">  <span class="attr">containerFactory:</span></span><br><span class="line">    <span class="attr">impl:</span> <span class="string">&quot;kubernetes&quot;</span></span><br><span class="line"><span class="comment"># 增加后面几行，注意空格</span></span><br><span class="line">  <span class="attr">imageName:</span> <span class="string">&quot;invoker&quot;</span></span><br><span class="line">  <span class="attr">imageTag:</span> <span class="string">&quot;v1&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>部署指令如下：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">helm install owdev ./helm/openwhisk -n openwhisk --create-namespace -f deploy/kind/mycluster.yaml</span><br></pre></td></tr></table></figure>
+            </div>
+
+            
+                <div class="post-copyright-info">
+                    <div class="article-copyright-info-container">
+    <ul class="copyright-info-content">
+        <li>本文标题：OpenWhisk 源码部署与修改</li>
+        <li>本文作者：Zinuo Cai</li>
+        <li>创建时间：2022-10-24 15:09:04</li>
+        <li>
+            本文链接：https://blogs.zinuo.info/2022/10/24/2022-10-24-openwhisk-modify-source/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+                </div>
+            
+
+            
+                <ul class="post-tags-box">
+                    
+                        <li class="tag-item">
+                            <a href="/tags/Serverless/">#Serverless</a>&nbsp;
+                        </li>
+                    
+                        <li class="tag-item">
+                            <a href="/tags/OpenWhisk/">#OpenWhisk</a>&nbsp;
+                        </li>
+                    
+                </ul>
+            
+
+            
+                <div class="article-nav">
+                    
+                    
+                        <div class="article-next">
+                            <a class="next"
+                               rel="next"
+                               href="/2022/10/24/2022-10-24-openwhisk-deploy/"
+                            >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">OpenWhisk 单机版安装指南</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                                <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                            </a>
+                        </div>
+                    
+                </div>
+            
+
+            
+        </div>
+
+        
+            <div class="toc-content-container">
+                <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Prerequest"><span class="nav-text">Prerequest</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BC%96%E8%AF%91"><span class="nav-text">编译</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%BA%90%E7%A0%81%E4%BF%AE%E6%94%B9%E3%80%81%E9%87%8D%E6%96%B0%E7%BC%96%E8%AF%91%E3%80%81%E9%83%A8%E7%BD%B2"><span class="nav-text">源码修改、重新编译、部署</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%BA%90%E7%A0%81%E4%BF%AE%E6%94%B9"><span class="nav-text">源码修改</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%87%8D%E6%96%B0%E7%BC%96%E8%AF%91"><span class="nav-text">重新编译</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%83%A8%E7%BD%B2"><span class="nav-text">部署</span></a></li></ol></li></ol>
+    </div>
+</div>
+
+            </div>
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            
+<footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+                <span>2020</span> -
+            
+            2022
+            
+                &nbsp;<i class="fas fa-heart icon-animate"></i>
+                &nbsp;<a href="/">Zinuo Cai</a>
+            
+        </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.5.1</a>
+        </div>
+        
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item flex-center toggle-show-toc">
+                <i class="fas fa-list"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    <div class="zoom-in-image-mask">
+    <img class="zoom-in-image">
+</div>
+
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+
+
+
+
+
+
+
+<div class="post-scripts">
+    
+        
+<script src="/js/post-helper.js"></script>
+
+<script src="/js/toc.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+    
+</div>
+
+
+
+</body>
+</html>
